@@ -1,0 +1,142 @@
+﻿@page "/personas"
+
+@using BlazorApp.Models;
+@using BlazorApp.Data;
+@inject PersonaService personasService;
+
+<h1>Listado de personas</h1>
+
+<p>Este componente demuestra el listado de datos desde un servicio.</p>
+
+@if (personas == null)
+{
+    <p><em>No hay registros...</em></p>
+}
+else
+{
+    <button class="btn btn-sm btn-outline-primary" @onclick="Add">Añadir</button>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Fecha de nacimiento</th>
+                <th>Opciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in personas)
+            {
+                <tr @onclick="@(() => Show(item.Id))">
+                    <td>@item.Nombre</td>
+                    <td>@item.FechaNacimiento.ToShortDateString()</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+}
+@if (mode == MODE.Add)
+{
+    <div class="form-group">
+        <label>Nombre</label>
+        <input class="form-control" @bind="Nombre" />
+    </div>
+    <div class="form-group">
+        <label>Fecha de nacimiento</label>
+        <input type="date" class="form-control" @bind="FechaNacimiento" />
+    </div>
+    <button class="form-control btn btn-primary" @onclick="Insertar">Insertar</button>
+}
+else if (mode == MODE.EditDelete)
+{
+    <input type="hidden" class="form-control" @bind="personaId" />
+    <div class="form-group">
+        <label>Nombre</label>
+        <input class="form-control" @bind="Nombre" />
+    </div>
+    <div class="form-group">
+        <label>Fecha de nacimiento</label>
+        <input type="date" class="form-control" @bind="FechaNacimiento" />
+    </div>
+    <button class="btn btn-primary" @onclick="Actualizar">Actualizar</button>
+    <button class="btn btn-primary" @onclick="Eliminar">Eliminar</button>
+}
+
+@code {
+    private List<Persona> personas;
+    int personaId;
+    string Nombre;
+    DateTime? FechaNacimiento;
+
+    private enum MODE { None, Add, EditDelete };
+    MODE mode = MODE.None;
+    Persona persona;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await load();
+    }
+
+    protected async Task Insertar()
+    {
+        persona = new Persona
+        {
+            Nombre = Nombre,
+            FechaNacimiento = (DateTime)FechaNacimiento
+        };
+
+        await personasService.InsertPersonaAsync(persona);
+        await load();
+        LimpiarCampos();
+        mode = MODE.None;
+    }
+
+    protected async Task Eliminar()
+    {
+        await personasService.DeletePersonaAsync(personaId);
+        LimpiarCampos();
+        await load();
+        mode = MODE.None;
+    }
+
+    protected async Task Actualizar()
+    {
+        persona = new Persona
+        {
+            Id = personaId,
+            Nombre = Nombre,
+            FechaNacimiento = (DateTime)FechaNacimiento
+        };
+
+        await personasService.UpdatePersonaAsync(personaId, persona);
+        LimpiarCampos();
+        await load();
+        mode = MODE.None;
+    }
+
+    protected async Task load()
+    {
+        personas = await personasService.GetPersonasAsync();
+    }
+
+    protected void LimpiarCampos()
+    {
+        Nombre = string.Empty;
+        FechaNacimiento = null;
+    }
+
+    protected void Add()
+    {
+        LimpiarCampos();
+        mode = MODE.Add;
+    }
+
+    protected async Task Show(int Id)
+    {
+        persona = await personasService.GetPersonaByIdAsync(Id);
+        personaId = Id;
+        Nombre = persona.Nombre;
+        FechaNacimiento = persona.FechaNacimiento;
+        mode = MODE.EditDelete;
+    }
+}
